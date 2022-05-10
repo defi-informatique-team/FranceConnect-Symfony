@@ -1,7 +1,7 @@
 {
   "name": "kleegroup/franceconnect-bundle",
   "type": "symfony-bundle",
-  "description": "Symfony4 OpenID security extension franceconnect",
+  "description": "Symfony 4 & 5 OpenID security extension franceconnect",
   "keywords": ["Security", "OpenId", "Authentication"],
   "homepage": "https://github.com/KleeGroup/FranceConnect-Symfony",
   "license": "MIT",
