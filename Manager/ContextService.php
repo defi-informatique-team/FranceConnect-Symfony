@@ -19,7 +19,6 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter;
 use Symfony\Component\Security\Http\Session\SessionAuthenticationStrategyInterface;
 
-
 /**
  * Class ContextService
  *
@@ -30,65 +29,72 @@ class ContextService implements ContextServiceInterface
     const OPENID_SESSION_TOKEN = "open_id_session_token";
     const OPENID_SESSION_NONCE = "open_id_session_nonce";
     const ID_TOKEN_HINT        = "open_id_token_hint";
-    
+
     /**
      * @var SessionInterface session manager
      */
     private $session;
+
     /**
      * @var LoggerInterface logger
      */
     private $logger;
+
     /**
      * @var string Identifier
      */
     private $clientId;
+
     /**
      * @var string Secret identifier
      */
     private $clientSecret;
+
     /**
      * @var string FranceConnect base URL
      */
     private $fcBaseUrl;
+
     /**
      * @var array scopes of data
      */
     private $scopes;
+
     /**
      * @var string callback URL
      */
     private $callbackUrl;
+
     /**
      * @var string logout URL
      */
     private $logoutUrl;
-    
+
     /**
      * @var string proxy host
      */
     private $proxyHost;
-    
+
     /**
      * @var int proxy port
      */
     private $proxyPort;
-    
+
     /**
      * @var TokenStorageInterface
      */
     private $tokenStorage;
-    
+
     /**
      * @var SessionAuthenticationStrategyInterface
      */
     private $sessionStrategy;
-    
+
     /**
      * @var RequestStack
      */
     private $requestStack;
-    
+
     /**
      * @var array
      */
@@ -176,16 +182,16 @@ class ContextService implements ContextServiceInterface
         $this->requestStack = $requestStack;
         $this->providersKeys = $providersKeys;
     }
-    
+
     /**
      * @inheritdoc
      */
-    public function generateAuthorizationURL()
+    public function generateAuthorizationURL(): string
     {
         $this->logger->debug('Set session tokens');
         $this->session->set(static::OPENID_SESSION_TOKEN, $this->getRandomToken());
         $this->session->set(static::OPENID_SESSION_NONCE, $this->getRandomToken());
-        
+
         $this->logger->debug('Generate Query String.');
         $params = [
             'response_type' => 'code',
@@ -195,20 +201,20 @@ class ContextService implements ContextServiceInterface
             'nonce'         => $this->session->get(static::OPENID_SESSION_NONCE),
             'state'         => urlencode('token={'.$this->session->get(static::OPENID_SESSION_TOKEN).'}'),
         ];
-        
+
         return $this->fcBaseUrl.'authorize?'.http_build_query($params);
     }
-    
+
     /**
      * Generate random string.
      *
      * @return string
      */
-    private function getRandomToken()
+    private function getRandomToken(): string
     {
         return sha1(random_int(0, mt_getrandmax()));
     }
-    
+
     /**
      * Returns data provided by FranceConnect.
      *
@@ -218,7 +224,7 @@ class ContextService implements ContextServiceInterface
      * @throws Exception General exception
      * @throws SecurityException An exception may be thrown if a security check has failed
      */
-    public function getUserInfo(array $params)
+    public function getUserInfo(array $params): mixed
     {
         $this->logger->debug('Get User Info.');
         if (array_key_exists("error", $params)) {
@@ -227,12 +233,12 @@ class ContextService implements ContextServiceInterface
             );
             throw new Exception('FranceConnect error => '.$params["error"]);
         }
-        
+
         $this->verifyState($params['state']);
         $accessToken = $this->getAccessToken($params['code']);
         $userInfo = $this->getInfos($accessToken);
         $userInfo['access_token'] = $accessToken;
-        
+
         $token = new FranceConnectToken($userInfo,
             [
                 FranceConnectAuthenticatedVoter::IS_FRANCE_CONNECT_AUTHENTICATED,
@@ -240,20 +246,19 @@ class ContextService implements ContextServiceInterface
             ]
         );
         $request = $this->requestStack->getCurrentRequest();
-        
+
         if (null !== $request) {
             $this->sessionStrategy->onAuthentication($request, $token);
         }
-        
+
         $this->tokenStorage->setToken($token);
         foreach ($this->providersKeys as $key) {
             $this->session->set('_security_'.$key, serialize($token));
         }
-        
-        
+
         return json_encode($userInfo, true);
     }
-    
+
     /**
      * Check state parameter for security reason.
      *
@@ -261,7 +266,7 @@ class ContextService implements ContextServiceInterface
      *
      * @throws SecurityException
      */
-    private function verifyState($state)
+    private function verifyState($state): void
     {
         $this->logger->debug('Verify parameter state.');
         $state = urldecode($state);
@@ -270,13 +275,13 @@ class ContextService implements ContextServiceInterface
         $token = $stateArray['token'];
         $token = preg_replace('~{~', '', $token, 1);
         $token = preg_replace('~}~', '', $token, 1);
-        
+
         if ($token != $this->session->get(static::OPENID_SESSION_TOKEN)) {
             $this->logger->error('The value of the parameter STATE is not equal to the one which is expected');
             throw new SecurityException("The token is invalid.");
         }
     }
-    
+
     /**
      * Get Access Token.
      *
@@ -286,7 +291,7 @@ class ContextService implements ContextServiceInterface
      * @throws SecurityException
      * @throws Exception
      */
-    private function getAccessToken($code)
+    private function getAccessToken($code): string
     {
         $this->logger->debug('Get Access Token.');
         $this->initRequest();
@@ -301,7 +306,7 @@ class ContextService implements ContextServiceInterface
         $this->logger->debug('POST Data to FranceConnect.');
         $this->setPostFields($post_data);
         $response = \Unirest\Request::post($token_url);
-        
+
         // check status code
         if ($response->code !== Response::HTTP_OK) {
             $result_array = $response->body;
@@ -314,13 +319,13 @@ class ContextService implements ContextServiceInterface
             );
             throw new Exception("FranceConnectError".$response->code." msg = ".$response->raw_body);
         }
-        
+
         $result_array = $response->body;
         $id_token = $result_array['id_token'];
         $this->session->set(static::ID_TOKEN_HINT, $id_token);
         $all_part = explode(".", $id_token);
         $payload = json_decode(base64_decode($all_part[1]), true);
-        
+
         // check nonce parameter
         if ($payload['nonce'] != $this->session->get(static::OPENID_SESSION_NONCE)) {
             $this->logger->error('The value of the parameter NONCE is not equal to the one which is expected');
@@ -333,16 +338,16 @@ class ContextService implements ContextServiceInterface
             $this->logger->error('The signature of the JWT is not valid.');
             throw new SecurityException("JWS is invalid");
         }
-        
+
         $this->session->remove(static::OPENID_SESSION_NONCE);
-        
+
         return $result_array['access_token'];
     }
-    
+
     /**
      * Prepare request.
      */
-    private function initRequest()
+    private function initRequest(): void
     {
         \Unirest\Request::clearCurlOpts();
         \Unirest\Request::clearDefaultHeaders();
@@ -352,13 +357,13 @@ class ContextService implements ContextServiceInterface
             \Unirest\Request::proxy($this->proxyHost, $this->proxyPort);
         }
     }
-    
+
     /**
      * set post fields.
      *
      * @param array $post_data
      */
-    private function setPostFields(array $post_data)
+    private function setPostFields(array $post_data): void
     {
         $pd = [];
         foreach ($post_data as $k => $v) {
@@ -369,7 +374,7 @@ class ContextService implements ContextServiceInterface
         \Unirest\Request::curlOpt(CURLOPT_POSTFIELDS, $pd);
         \Unirest\Request::curlOpt(CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
     }
-    
+
     /**
      * Last call to FranceConnect to get data.
      *
@@ -378,7 +383,7 @@ class ContextService implements ContextServiceInterface
      * @return mixed
      * @throws Exception
      */
-    private function getInfos($accessToken)
+    private function getInfos($accessToken): mixed
     {
         $this->logger->debug('Get Infos.');
         $this->initRequest();
@@ -393,25 +398,24 @@ class ContextService implements ContextServiceInterface
             $this->logger->error($messageErreur);
             throw new Exception("Erreur lors de la récupération des infos sur le serveur OpenID : ".$messageErreur);
         }
-        
+
         return $response->body;
     }
-    
+
     /**
      * @inheritdoc
      */
-    public function generateLogoutURL()
+    public function generateLogoutURL(): string
     {
         $this->logger->debug('Generate Query String.');
         $params = [
             'post_logout_redirect_uri' => $this->logoutUrl,
             'id_token_hint'            => $this->session->get(static::ID_TOKEN_HINT),
         ];
-        
+
         $this->logger->debug('Remove session token');
         $this->session->clear();
-        
+
         return $this->fcBaseUrl.'logout?'.http_build_query($params);
     }
-    
 }

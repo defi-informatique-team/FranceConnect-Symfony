@@ -8,7 +8,6 @@
 
 namespace KleeGroup\FranceConnectBundle\Manager;
 
-
 class CurlWrapper
 {
     const POST_DATA_SEPARATOR = "\r\n";
@@ -39,58 +38,58 @@ class CurlWrapper
         curl_setopt($this->curlHandle, CURLOPT_SSL_VERIFYPEER, true);
     }
 
-    public function __destruct()
+    public function __destruct(): void
     {
         curl_close($this->curlHandle);
     }
 
-    public function httpAuthentication($username, $password)
+    public function httpAuthentication($username, $password): void
     {
         $this->setProperties(CURLOPT_USERPWD, "$username:$password");
         $this->setProperties(CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     }
 
-    public function addHeader($name, $value)
+    public function addHeader($name, $value): void
     {
         $this->setProperties(CURLOPT_HTTPHEADER, array("$name: $value"));
     }
 
-    public function getLastError()
+    public function getLastError(): mixed
     {
         return $this->lastError;
     }
 
-    private function setProperties($properties, $values)
+    private function setProperties($properties, $values): void
     {
         curl_setopt($this->curlHandle, $properties, $values);
     }
 
-    public function setAccept($format)
+    public function setAccept($format): void
     {
         $curlHttpHeader[] = "Accept: $format";
         $this->setProperties(CURLOPT_HTTPHEADER, $curlHttpHeader);
     }
 
-    public function dontVerifySSLCACert()
+    public function dontVerifySSLCACert(): void
     {
         $this->setProperties(CURLOPT_SSL_VERIFYHOST, 0);
         $this->setProperties(CURLOPT_SSL_VERIFYPEER, 0);
     }
 
-    public function setServerCertificate($serverCertificate)
+    public function setServerCertificate($serverCertificate): void
     {
         $this->setProperties(CURLOPT_CAINFO, $serverCertificate);
         $this->setProperties(CURLOPT_SSL_VERIFYPEER, 0);
     }
 
-    public function setClientCertificate($clientCertificate, $clientKey, $clientKeyPassword)
+    public function setClientCertificate($clientCertificate, $clientKey, $clientKeyPassword): void
     {
         $this->setProperties(CURLOPT_SSLCERT, $clientCertificate);
         $this->setProperties(CURLOPT_SSLKEY, $clientKey);
         $this->setProperties(CURLOPT_SSLKEYPASSWD, $clientKeyPassword);
     }
 
-    public function get($url)
+    public function get($url): mixed
     {
         $this->setProperties(CURLOPT_URL, $url);
         if ($this->postData || $this->postFile) {
@@ -110,7 +109,7 @@ class CurlWrapper
         return $output;
     }
 
-    public function addPostData($name, $value)
+    public function addPostData($name, $value): void
     {
         if (!isset($this->postData[$name])) {
             $this->postData[$name] = array();
@@ -119,7 +118,7 @@ class CurlWrapper
         $this->postData[$name][] = $value;
     }
 
-    public function setPostDataUrlEncode(array $post_data)
+    public function setPostDataUrlEncode(array $post_data): void
     {
         $pd = array();
         foreach ($post_data as $k => $v) {
@@ -132,7 +131,7 @@ class CurlWrapper
     }
 
 
-    public function addPostFile($field, $filePath, $fileName = false, $contentType = "application/octet-stream", $contentTransferEncoding = false)
+    public function addPostFile($field, $filePath, $fileName = false, $contentType = "application/octet-stream", $contentTransferEncoding = false): void
     {
         if (!$fileName) {
             $fileName = basename($filePath);
@@ -141,13 +140,13 @@ class CurlWrapper
         $this->postFileProperties[$field][$fileName] = array($contentType, $contentTransferEncoding);
     }
 
-    private function getBoundary()
+    private function getBoundary(): string
     {
         return '----------------------------' .
         substr(sha1('CurlWrapper' . microtime()), 0, 12);
     }
 
-    private function curlSetPostData()
+    private function curlSetPostData(): void
     {
         $this->setProperties(CURLOPT_POST, true);
         if ($this->isPostDataWithSimilarName()) {
@@ -157,7 +156,7 @@ class CurlWrapper
         }
     }
 
-    private function isPostDataWithSimilarName()
+    private function isPostDataWithSimilarName(): ?bool
     {
         $array = array();
 
@@ -179,7 +178,7 @@ class CurlWrapper
         }
     }
 
-    private function curlPostDataStandard()
+    private function curlPostDataStandard(): void
     {
         $post = array();
         foreach ($this->postData as $name => $multipleValue) {
@@ -195,7 +194,7 @@ class CurlWrapper
         curl_setopt($this->curlHandle, CURLOPT_POSTFIELDS, $post);
     }
 
-    private function curlSetPostDataWithSimilarFilename()
+    private function curlSetPostDataWithSimilarFilename(): void
     {
         $boundary = $this->getBoundary();
 
@@ -209,7 +208,6 @@ class CurlWrapper
                 $body[] = $value;
             }
         }
-
 
         foreach ($this->postFile as $name => $multipleValue) {
             foreach ($multipleValue as $fileName => $filePath) {
@@ -238,7 +236,7 @@ class CurlWrapper
         $this->setProperties(CURLOPT_POSTFIELDS, $content);
     }
 
-    public function getHTTPCode()
+    public function getHTTPCode(): mixed
     {
         return curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
     }

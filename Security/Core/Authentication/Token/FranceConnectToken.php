@@ -40,7 +40,7 @@ class FranceConnectToken extends AbstractToken
     /**
      * @return string
      */
-    public function getIdentity()
+    public function getIdentity(): string
     {
         return $this->fcIdentity;
     }
@@ -48,7 +48,7 @@ class FranceConnectToken extends AbstractToken
     /**
      * @return void
      */
-    public function getCredentials()
+    public function getCredentials(): string
     {
         return '';
     }

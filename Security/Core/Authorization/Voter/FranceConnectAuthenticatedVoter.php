@@ -23,31 +23,30 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 class FranceConnectAuthenticatedVoter implements VoterInterface
 {
     public const IS_FRANCE_CONNECT_AUTHENTICATED = 'IS_FRANCE_CONNECT_AUTHENTICATED';
-    
+
     /**
      * {@inheritdoc}
      */
-    public function vote(TokenInterface $token, $object, array $attributes)
+    public function vote(TokenInterface $token, $object, array $attributes): int
     {
         foreach ($attributes as $attribute) {
             if (!$this->supportsAttribute($attribute)) {
                 continue;
             }
-            
+
             return $token instanceof FranceConnectToken ?
                 VoterInterface::ACCESS_GRANTED :
                 VoterInterface::ACCESS_DENIED;
         }
-        
+
         return VoterInterface::ACCESS_ABSTAIN;
     }
-    
+
     /**
      * {@inheritdoc}
      */
-    public function supportsAttribute($attribute)
+    public function supportsAttribute($attribute): mixed
     {
         return static::IS_FRANCE_CONNECT_AUTHENTICATED === $attribute;
     }
-    
 }
