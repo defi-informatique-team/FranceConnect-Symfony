@@ -21,7 +21,7 @@ use Symfony\Component\Security\Core\Authentication\Token\AbstractToken;
 class FranceConnectToken extends AbstractToken
 {
     /**
-     * @var string
+     * @var array
      */
     private $fcIdentity;
 
@@ -38,9 +38,9 @@ class FranceConnectToken extends AbstractToken
     }
 
     /**
-     * @return string
+     * @return array
      */
-    public function getIdentity(): string
+    public function getIdentity(): array
     {
         return $this->fcIdentity;
     }
