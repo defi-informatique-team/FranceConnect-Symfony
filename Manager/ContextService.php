@@ -2,7 +2,6 @@
 
 namespace KleeGroup\FranceConnectBundle\Manager;
 
-
 use KleeGroup\FranceConnectBundle\Manager\Exception\Exception;
 use KleeGroup\FranceConnectBundle\Manager\Exception\SecurityException;
 use KleeGroup\FranceConnectBundle\Security\Core\Authentication\Token\FranceConnectToken;
@@ -150,10 +149,10 @@ class ContextService implements ContextServiceInterface
         //  Callback URL
         try {
             switch ($callbackType) {
-                case 'route' :
+                case 'route':
                     $this->callbackUrl = $router->generate($callbackValue, [], UrlGeneratorInterface::ABSOLUTE_URL);
                     break;
-                default :
+                default:
                     $this->callbackUrl = $callbackValue;
                     break;
             }
@@ -164,10 +163,10 @@ class ContextService implements ContextServiceInterface
         //  Logout URL
         try {
             switch ($logoutType) {
-                case 'route' :
+                case 'route':
                     $this->logoutUrl = $router->generate($logoutValue, [], UrlGeneratorInterface::ABSOLUTE_URL);
                     break;
-                default :
+                default:
                     $this->logoutUrl = $logoutValue;
                     break;
             }
@@ -200,6 +199,7 @@ class ContextService implements ContextServiceInterface
             'redirect_uri'  => $this->callbackUrl,
             'nonce'         => $this->session->get(static::OPENID_SESSION_NONCE),
             'state'         => urlencode('token={'.$this->session->get(static::OPENID_SESSION_TOKEN).'}'),
+            'acr_values'    => 'eidas1'
         ];
 
         return $this->fcBaseUrl.'authorize?'.http_build_query($params);
@@ -239,7 +239,8 @@ class ContextService implements ContextServiceInterface
         $userInfo = $this->getInfos($accessToken);
         $userInfo['access_token'] = $accessToken;
 
-        $token = new FranceConnectToken($userInfo,
+        $token = new FranceConnectToken(
+            $userInfo,
             [
                 FranceConnectAuthenticatedVoter::IS_FRANCE_CONNECT_AUTHENTICATED,
                 AuthenticatedVoter::IS_AUTHENTICATED_ANONYMOUSLY,
