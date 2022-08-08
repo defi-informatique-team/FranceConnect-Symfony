@@ -10,7 +10,6 @@ use Namshi\JOSE\SimpleJWS;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
@@ -28,11 +27,6 @@ class ContextService implements ContextServiceInterface
     const OPENID_SESSION_TOKEN = "open_id_session_token";
     const OPENID_SESSION_NONCE = "open_id_session_nonce";
     const ID_TOKEN_HINT        = "open_id_token_hint";
-
-    /**
-     * @var SessionInterface session manager
-     */
-    private $session;
 
     /**
      * @var LoggerInterface logger
@@ -101,7 +95,6 @@ class ContextService implements ContextServiceInterface
 
     /**
      * ContextService constructor.
-     * @param SessionInterface $session
      * @param LoggerInterface $logger
      * @param RouterInterface $router
      * @param SessionAuthenticationStrategyInterface $sessionStrategy
@@ -121,7 +114,6 @@ class ContextService implements ContextServiceInterface
      * @throws Exception
      */
     public function __construct(
-        SessionInterface $session,
         LoggerInterface $logger,
         RouterInterface $router,
         SessionAuthenticationStrategyInterface $sessionStrategy,
@@ -139,7 +131,6 @@ class ContextService implements ContextServiceInterface
         string $logoutValue,
         array $providersKeys
     ) {
-        $this->session = $session;
         $this->logger = $logger;
         $this->clientId = $clientId;
         $this->clientSecret = $clientSecret;
@@ -188,8 +179,8 @@ class ContextService implements ContextServiceInterface
     public function generateAuthorizationURL(): string
     {
         $this->logger->debug('Set session tokens');
-        $this->session->set(static::OPENID_SESSION_TOKEN, $this->getRandomToken());
-        $this->session->set(static::OPENID_SESSION_NONCE, $this->getRandomToken());
+        $this->requestStack->getSession()->set(static::OPENID_SESSION_TOKEN, $this->getRandomToken());
+        $this->requestStack->getSession()->set(static::OPENID_SESSION_NONCE, $this->getRandomToken());
 
         $this->logger->debug('Generate Query String.');
         $params = [
@@ -197,8 +188,8 @@ class ContextService implements ContextServiceInterface
             'client_id'     => $this->clientId,
             'scope'         => implode(' ', $this->scopes),
             'redirect_uri'  => $this->callbackUrl,
-            'nonce'         => $this->session->get(static::OPENID_SESSION_NONCE),
-            'state'         => urlencode('token={'.$this->session->get(static::OPENID_SESSION_TOKEN).'}'),
+            'nonce'         => $this->requestStack->getSession()->get(static::OPENID_SESSION_NONCE),
+            'state'         => urlencode('token={'.$this->requestStack->getSession()->get(static::OPENID_SESSION_TOKEN).'}'),
             'acr_values'    => 'eidas1'
         ];
 
@@ -254,7 +245,7 @@ class ContextService implements ContextServiceInterface
 
         $this->tokenStorage->setToken($token);
         foreach ($this->providersKeys as $key) {
-            $this->session->set('_security_'.$key, serialize($token));
+            $this->requestStack->getSession()->set('_security_'.$key, serialize($token));
         }
 
         return json_encode($userInfo, true);
@@ -277,7 +268,7 @@ class ContextService implements ContextServiceInterface
         $token = preg_replace('~{~', '', $token, 1);
         $token = preg_replace('~}~', '', $token, 1);
 
-        if ($token != $this->session->get(static::OPENID_SESSION_TOKEN)) {
+        if ($token != $this->requestStack->getSession()->get(static::OPENID_SESSION_TOKEN)) {
             $this->logger->error('The value of the parameter STATE is not equal to the one which is expected');
             throw new SecurityException("The token is invalid.");
         }
@@ -323,12 +314,12 @@ class ContextService implements ContextServiceInterface
 
         $result_array = $response->body;
         $id_token = $result_array['id_token'];
-        $this->session->set(static::ID_TOKEN_HINT, $id_token);
+        $this->requestStack->getSession()->set(static::ID_TOKEN_HINT, $id_token);
         $all_part = explode(".", $id_token);
         $payload = json_decode(base64_decode($all_part[1]), true);
 
         // check nonce parameter
-        if ($payload['nonce'] != $this->session->get(static::OPENID_SESSION_NONCE)) {
+        if ($payload['nonce'] != $this->requestStack->getSession()->get(static::OPENID_SESSION_NONCE)) {
             $this->logger->error('The value of the parameter NONCE is not equal to the one which is expected');
             throw new SecurityException("The nonce parameter is invalid");
         }
@@ -340,7 +331,7 @@ class ContextService implements ContextServiceInterface
             throw new SecurityException("JWS is invalid");
         }
 
-        $this->session->remove(static::OPENID_SESSION_NONCE);
+        $this->requestStack->getSession()->remove(static::OPENID_SESSION_NONCE);
 
         return $result_array['access_token'];
     }
@@ -411,11 +402,11 @@ class ContextService implements ContextServiceInterface
         $this->logger->debug('Generate Query String.');
         $params = [
             'post_logout_redirect_uri' => $this->logoutUrl,
-            'id_token_hint'            => $this->session->get(static::ID_TOKEN_HINT),
+            'id_token_hint'            => $this->requestStack->getSession()->get(static::ID_TOKEN_HINT),
         ];
 
         $this->logger->debug('Remove session token');
-        $this->session->clear();
+        $this->requestStack->getSession()->clear();
 
         return $this->fcBaseUrl.'logout?'.http_build_query($params);
     }
